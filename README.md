@@ -8,6 +8,72 @@ strategy, and implementation planning. The calling agent still owns the work:
 `ask-pro` collects the consult, stores the answer, and never applies generated
 code automatically.
 
+## Normal Codex Operation
+
+The normal local interface is the pair of personal Codex skills installed
+beneath `$CODEX_HOME/skills`:
+
+```text
+$pro-consult Review this architecture and identify the highest-risk problems.
+$resume-from-pro
+```
+
+`$pro-consult` prepares a focused, self-contained consultation, selects the
+smallest useful file set, runs the installed plugin, verifies the harvested
+answer against the current repository, and continues authorized work.
+`$resume-from-pro` recovers an interrupted or completed consultation and
+continues from its saved state. Their usual locations are:
+
+```text
+$CODEX_HOME/skills/pro-consult
+$CODEX_HOME/skills/resume-from-pro
+```
+
+Raw CLI use remains available, but is normally unnecessary when these skills
+are installed.
+
+## How It Works
+
+1. Codex supplies a question and focused repository files.
+2. `ask-pro` creates an uncompressed `CONTEXT.zip` plus matching JSON and
+   Markdown manifests under a recoverable `.ask-pro/sessions/<session-id>/`
+   directory.
+3. It opens or reuses a persistent, human-controlled Chrome profile, selects
+   `GPT-5.6 Sol` with `Pro` intelligence, uploads the bundle, waits, and stores
+   the harvested answer as `ANSWER.md`.
+4. Codex treats Pro as an advisor, checks the answer against current code and
+   repository rules, and remains responsible for any implementation.
+
+An exact `--files` path is a deliberate attachment. That includes an exact
+prior answer such as:
+
+```text
+--files .ask-pro/sessions/<previous-session-id>/ANSWER.md
+```
+
+The file appears inside `CONTEXT.zip` at its exact `context/...` path.
+Directories and globs remain discovery operations and continue to respect
+default exclusions, so `.ask-pro` and `.ask-pro/**` do not recursively expose
+session storage. Credential files, `.git` contents, paths outside the project,
+symlink escapes, unreadable or non-text files, and oversized inputs remain
+forbidden even when named exactly.
+
+## Operational Documentation
+
+- [End-to-end workflow](docs/06-ask-pro-workflow.md)
+- [Browser authentication and recovery](docs/08-browser-auth-gate.md)
+- [Session files and manifests](docs/09-session-layout.md)
+- [Command and status contract](docs/05-command-surface.md)
+- [Safety and operational risks](docs/11-risk-register.md)
+- [Manual validation procedures](docs/manual-tests.md)
+
+## Lineage and Attribution
+
+This is an independent continuation of `Pimpmuckl/ask-pro`. It preserves the
+upstream Git history, MIT license, original commits, authorship, and attribution.
+Independence means this repository is maintained and released separately; it
+does not imply that the original project was written by the current maintainer.
+
 ## Install
 
 Add this repository as a Codex plugin marketplace:
@@ -66,7 +132,10 @@ Each new profile may need a human login once. On Windows, fresh runs for an
 auth-ready managed profile start minimized; login, resume/recovery, stale-auth,
 and debug paths stay visible or are restored for human action.
 
-## Quick Use
+## Raw CLI (Optional)
+
+Use the CLI directly when debugging, developing, or integrating `ask-pro`
+without the personal skills.
 
 Ask for an inline markdown consult:
 
@@ -110,7 +179,9 @@ ask-pro --harvest <session-id>
   `--files .ask-pro/sessions/<session-id>/ANSWER.md`. Never use `.ask-pro/` or
   `.ask-pro/**` for prior-session continuity because directory and glob
   discovery intentionally exclude session storage.
-- Add `.ask-pro/` to consuming repos' `.gitignore`.
+- Keep `.ask-pro/` out of commits. The personal launchers use the repository's
+  local `.git/info/exclude`; raw CLI users may add `.ask-pro/` to `.gitignore`
+  when project policy permits.
 - Treat `INCOMPLETE_ANSWER` / `preamble_without_artifacts` as not done; resume
   or rerun with a tighter prompt and bundle.
 - Never execute generated zip contents automatically.
