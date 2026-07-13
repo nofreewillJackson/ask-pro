@@ -89,7 +89,11 @@ export function createStoredZip(entries: ZipEntryInput[]): Buffer {
 
 function normalizeZipName(name: string): string {
   const normalized = name.replace(/\\/g, "/").replace(/^\/+/, "");
-  if (!normalized || normalized.includes("..")) {
+  const segments = normalized.split("/");
+  if (
+    !normalized ||
+    segments.some((segment) => segment === "" || segment === "." || segment === "..")
+  ) {
     throw new Error(`Invalid zip entry name: ${name}`);
   }
   return normalized;

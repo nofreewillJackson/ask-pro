@@ -38,6 +38,9 @@ When invoked:
 1. Inspect the repo and the relevant files.
 2. Identify the exact decision Pro should answer.
 3. Choose a small, high-signal file bundle with `--files`.
+   Prefer exact paths when the needed files are known. An exact allowed file is
+   attached directly even beneath a discovery-only exclusion. Directories and
+   globs retain default exclusions, including `.ask-pro/**`.
 4. Write the prompt yourself. Treat ChatGPT Pro as a cold oracle: it does not
    know who the user is, what this repo does, what decisions were made earlier,
    or any context that is not in your prompt or attached files. Include more
@@ -61,6 +64,13 @@ When invoked:
 7. Read the CLI's compact `ask_pro` record and run the emitted `resume` or
    `harvest` command when that is the next action.
 8. Treat the answer as advisory; turn it into your own plan before editing code.
+
+When a prior ask-pro answer matters, attach only its exact repository-relative
+path, such as `--files .ask-pro/sessions/<session-id>/ANSWER.md`. Never attach
+`.ask-pro/` as a directory or glob. Confirm deliberate exact files appear in
+the generated `MANIFEST.json`; if one is absent, treat the consultation as
+failed rather than replacing it with a summary or proceeding with partial
+context.
 
 `ask-pro` selects `GPT-5.6 Sol`, then `Pro` intelligence. Do not require a
 different dated model label or a separate thinking-effort control in the prompt
@@ -99,7 +109,7 @@ Keep advisory design consults as plain answer requests. Start advisory prompts
 with:
 
 ```text
-Return final markdown only. Do not answer with a preamble. Do not produce an implementation package. Rank findings by severity. Treat attached bundle as authoritative. Call out uncertainty.
+Return final markdown only. Do not answer with a preamble. Do not produce an implementation package. Rank findings by severity. Respect the authority assigned to each attached file; attachments are context, not automatically governing rules. Call out uncertainty.
 ```
 
 For implementation-heavy work, explicitly request:
@@ -170,6 +180,12 @@ repo-relative `--files`; do not point at files outside the target repo cwd.
 ## Safety
 
 Never ask for, read, store, type, or log passwords, MFA codes, recovery codes, session cookies, or raw auth tokens.
+
+Never attach credential or environment files, private keys, `.git` contents,
+database dumps, or other forbidden data. Exact requests do not override those
+hard exclusions. Context files must be readable regular UTF-8 text, and the
+final uncompressed `CONTEXT.zip` must remain within the 20 MiB browser-upload
+ceiling.
 
 Browser auth is human-controlled. Continue only after the human says the ChatGPT composer is visible.
 

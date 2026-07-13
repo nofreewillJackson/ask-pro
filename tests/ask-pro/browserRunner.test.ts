@@ -9,6 +9,7 @@ import {
   updateAskProStatus,
   writeAskProBrowserMetadata,
 } from "../../src/ask-pro/session.js";
+import { MAX_CONTEXT_BYTES } from "../../src/ask-pro/limits.js";
 
 const managedProfileState = vi.hoisted(() => ({ root: "" }));
 const resumeBrowserSessionMock = vi.fn(async () => ({
@@ -117,6 +118,25 @@ afterEach(async () => {
 });
 
 describe("ask-pro browser runner", () => {
+  test("rejects a replaced oversized context bundle before browser startup", async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), "ask-pro-browser-size-"));
+    tempDirs.push(cwd);
+    const session = await createAskProSession({
+      cwd,
+      question: "Review this.",
+      filePatterns: [],
+      dryRun: false,
+    });
+    await fs.truncate(path.join(session.dir, "CONTEXT.zip"), MAX_CONTEXT_BYTES + 1);
+    const browserProfile = path.join(managedProfileState.root, "oversized-profile");
+
+    await expect(
+      runAskProBrowserSession({ cwd, sessionId: session.id, browserProfileDir: browserProfile }),
+    ).rejects.toThrow(/CONTEXT\.zip.*browser upload limit.*20 MiB/);
+    expect(runBrowserModeMock).not.toHaveBeenCalled();
+    await expect(fs.stat(browserProfile)).rejects.toThrow();
+  });
+
   test("runs ask-pro sessions with the explicit agent profile", async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), "ask-pro-run-agent-"));
     tempDirs.push(cwd);

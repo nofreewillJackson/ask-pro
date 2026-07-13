@@ -1,18 +1,23 @@
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import type { ChromeClient, BrowserAttachment } from "../types.js";
-
-const MAX_DATA_TRANSFER_BYTES = 20 * 1024 * 1024;
+import { MAX_CONTEXT_BYTES } from "../../ask-pro/limits.js";
 
 export async function transferAttachmentViaDataTransfer(
   runtime: ChromeClient["Runtime"],
   attachment: BrowserAttachment,
   selector: string,
 ): Promise<{ fileName: string; size: number }> {
-  const fileContent = await readFile(attachment.path);
-  if (fileContent.length > MAX_DATA_TRANSFER_BYTES) {
+  const fileStat = await stat(attachment.path);
+  if (fileStat.size > MAX_CONTEXT_BYTES) {
     throw new Error(
-      `Attachment ${path.basename(attachment.path)} is too large for data transfer (${fileContent.length} bytes). Maximum size is ${MAX_DATA_TRANSFER_BYTES} bytes.`,
+      `Attachment ${path.basename(attachment.path)} is too large for data transfer (${fileStat.size} bytes). Maximum size is ${MAX_CONTEXT_BYTES} bytes.`,
+    );
+  }
+  const fileContent = await readFile(attachment.path);
+  if (fileContent.length > MAX_CONTEXT_BYTES) {
+    throw new Error(
+      `Attachment ${path.basename(attachment.path)} grew beyond the data transfer limit (${fileContent.length} bytes). Maximum size is ${MAX_CONTEXT_BYTES} bytes.`,
     );
   }
 

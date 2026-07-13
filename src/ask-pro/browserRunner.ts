@@ -12,6 +12,7 @@ import { runBrowserMode, type BrowserRunResult } from "../browserMode.js";
 import { closeTab } from "../browser/chromeLifecycle.js";
 import { resumeBrowserSession } from "../browser/reattach.js";
 import type { BrowserLogger } from "../browser/types.js";
+import { formatContextLimit, MAX_CONTEXT_BYTES } from "./limits.js";
 import {
   appendAskProLog,
   getAskProSessionPaths,
@@ -53,6 +54,15 @@ export async function runAskProBrowserSession({
   verbose,
 }: RunAskProBrowserSessionOptions): Promise<BrowserRunResult> {
   const paths = getAskProSessionPaths(cwd, sessionId);
+  const contextStat = await fs.stat(paths.contextZip);
+  if (!contextStat.isFile()) {
+    throw new Error(`CONTEXT.zip is not a regular file: ${paths.contextZip}`);
+  }
+  if (contextStat.size > MAX_CONTEXT_BYTES) {
+    throw new Error(
+      `CONTEXT.zip is ${contextStat.size} bytes, exceeding the browser upload limit of ${formatContextLimit()}.`,
+    );
+  }
   const prompt = await readAskProPrompt({ cwd, sessionId });
   const { status: sessionStatus } = await readAskProStatus({ cwd, sessionId });
   const artifactsRequested = sessionStatus.artifacts === true;

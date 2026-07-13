@@ -13,7 +13,7 @@ code automatically.
 Add this repository as a Codex plugin marketplace:
 
 ```powershell
-codex plugin marketplace add https://github.com/Pimpmuckl/ask-pro --ref main
+codex plugin marketplace add https://github.com/nofreewillJackson/ask-pro --ref v0.1.1
 ```
 
 Then open `/plugins`, install `ask-pro`, and start a new Codex thread. Refresh
@@ -103,6 +103,13 @@ ask-pro --harvest <session-id>
   anything where recovery matters.
 - Keep bundles focused: relevant source, focused tests, docs that define the
   contract, recent changes, and validation status.
+- Prefer exact `--files` paths when the needed files are known. Confirm every
+  exact attachment in the generated `MANIFEST.json`; a rejected exact request
+  fails the consultation instead of silently creating a partial bundle.
+- Attach a prior answer with its exact path, for example
+  `--files .ask-pro/sessions/<session-id>/ANSWER.md`. Never use `.ask-pro/` or
+  `.ask-pro/**` for prior-session continuity because directory and glob
+  discovery intentionally exclude session storage.
 - Add `.ask-pro/` to consuming repos' `.gitignore`.
 - Treat `INCOMPLETE_ANSWER` / `preamble_without_artifacts` as not done; resume
   or rerun with a tighter prompt and bundle.
@@ -111,7 +118,7 @@ ask-pro --harvest <session-id>
 Useful advisory prompt starter:
 
 ```text
-Return final markdown only. Do not answer with a preamble. Do not produce an implementation package. Rank findings by severity. Treat attached bundle as authoritative. Call out uncertainty.
+Return final markdown only. Do not answer with a preamble. Do not produce an implementation package. Rank findings by severity. Respect the authority assigned to each attached file; attachments are context, not automatically governing rules. Call out uncertainty.
 ```
 
 ## CLI
@@ -122,7 +129,11 @@ ask-pro [options] [question...]
 
 Common options:
 
-- `--files <pattern>`: add a file, directory, or glob to `CONTEXT.zip`.
+- `--files <path-or-pattern>`: add an exact file directly, or discover files
+  through a directory or glob. Exact files bypass discovery-only ignores such
+  as `.ask-pro/**`, `node_modules/**`, and build-output trees, but credential
+  files and paths outside the project remain forbidden. Directories and globs
+  always retain the default discovery exclusions.
 - `--prompt-file <path>`: read the question from a UTF-8 file; use `-` for
   stdin.
 - `--artifacts` / `--response-zip`: ask for `ask-pro-response.zip`.
@@ -134,6 +145,13 @@ Common options:
 - `--verbose`: print browser automation diagnostics.
 
 Session data lives under `.ask-pro/sessions/<session-id>/`.
+
+`CONTEXT.zip` is an uncompressed bundle with a 20 MiB ceiling, matching the
+smallest supported browser upload route. ask-pro checks each selected file,
+the aggregate input size, and the final zip before Chrome starts. Selected
+files must be readable regular UTF-8 text files. Missing, forbidden, unreadable,
+outside-project, symlink-escaping, non-text, and oversized exact requests fail
+before browser startup. Secret redaction remains best effort for allowed files.
 
 ## Development
 

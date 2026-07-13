@@ -8,8 +8,8 @@
       "name": "ask-pro",
       "source": {
         "source": "url",
-        "url": "https://github.com/Pimpmuckl/ask-pro.git",
-        "ref": "main"
+        "url": "https://github.com/nofreewillJackson/ask-pro.git",
+        "ref": "v0.1.1"
       },
       "policy": {
         "installation": "AVAILABLE",

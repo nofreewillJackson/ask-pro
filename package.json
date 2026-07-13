@@ -1,6 +1,6 @@
 {
   "name": "ask_pro",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Browser-backed ChatGPT Pro escalation for hard engineering questions.",
   "keywords": [
     "agents",
@@ -9,15 +9,15 @@
     "chatgpt-pro",
     "codex"
   ],
-  "homepage": "https://github.com/Pimpmuckl/ask-pro#readme",
+  "homepage": "https://github.com/nofreewillJackson/ask-pro#readme",
   "bugs": {
-    "url": "https://github.com/Pimpmuckl/ask-pro/issues"
+    "url": "https://github.com/nofreewillJackson/ask-pro/issues"
   },
   "license": "MIT",
   "author": "",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Pimpmuckl/ask-pro.git"
+    "url": "git+https://github.com/nofreewillJackson/ask-pro.git"
   },
   "bin": {
     "ask-pro": "dist/bin/ask-pro-cli.js"

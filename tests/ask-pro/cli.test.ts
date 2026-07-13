@@ -66,6 +66,64 @@ describe("ask-pro cli", () => {
     expect(JSON.parse(statusRaw).resumeCommand).not.toContain("--no-temporary");
   }, 30000);
 
+  test("reports an exact prior answer in the dry-run count and manifest", async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), "ask-pro-cli-exact-"));
+    tempDirs.push(cwd);
+    const relativePath = ".ask-pro/sessions/prior/ANSWER.md";
+    await fs.mkdir(path.dirname(path.join(cwd, relativePath)), { recursive: true });
+    await fs.writeFile(path.join(cwd, relativePath), "CLI_EXACT_MARKER\n", "utf8");
+
+    const cli = path.join(process.cwd(), "bin", "ask-pro-cli.ts");
+    const tsxLoader = pathToFileURL(
+      path.join(process.cwd(), "node_modules", "tsx", "dist", "esm", "index.mjs"),
+    ).href;
+    const { stdout, stderr } = await execFileAsync(
+      process.execPath,
+      ["--import", tsxLoader, cli, "--dry-run", "--files", relativePath, "Review this."],
+      { cwd },
+    );
+
+    expect(stderr).toBe("");
+    expect(stdout).toContain("  files: 1\n");
+    const sessions = (await fs.readdir(path.join(cwd, ".ask-pro", "sessions"))).filter(
+      (entry) => entry !== "prior",
+    );
+    expect(sessions).toHaveLength(1);
+    const manifest = JSON.parse(
+      await fs.readFile(
+        path.join(cwd, ".ask-pro", "sessions", sessions[0]!, "MANIFEST.json"),
+        "utf8",
+      ),
+    );
+    expect(manifest.includedFiles).toEqual([
+      { path: relativePath, reason: "Explicit file requested by --files." },
+    ]);
+  }, 30000);
+
+  test("rejects a forbidden exact file before browser startup or partial session creation", async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), "ask-pro-cli-forbidden-"));
+    tempDirs.push(cwd);
+    await fs.writeFile(path.join(cwd, ".env"), "FIXTURE_ONLY=true\n", "utf8");
+    await fs.writeFile(path.join(cwd, "allowed.txt"), "allowed\n", "utf8");
+
+    const cli = path.join(process.cwd(), "bin", "ask-pro-cli.ts");
+    const tsxLoader = pathToFileURL(
+      path.join(process.cwd(), "node_modules", "tsx", "dist", "esm", "index.mjs"),
+    ).href;
+
+    await expect(
+      execFileAsync(
+        process.execPath,
+        ["--import", tsxLoader, cli, "--files", "allowed.txt", "--files", ".env", "Review this."],
+        { cwd },
+      ),
+    ).rejects.toMatchObject({
+      code: 1,
+      stdout: expect.stringContaining("Exact --files path is forbidden: .env"),
+    });
+    await expect(fs.readdir(path.join(cwd, ".ask-pro", "sessions"))).rejects.toThrow();
+  }, 30000);
+
   test("creates a dry-run session from a prompt file", async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), "ask-pro-cli-prompt-file-"));
     tempDirs.push(cwd);
@@ -1000,10 +1058,10 @@ describe("ask-pro cli", () => {
     );
     expect(JSON.parse(statusRaw)).toMatchObject({
       resumeCommand: expect.stringMatching(
-        /^npm exec --yes pnpm@10\.33\.2 -- --dir "C:\/Code\/ask-pro" start -- --cwd ".+" --resume /,
+        /^npm exec --yes pnpm@10\.33\.2 -- --dir "C:\/Code\/ask-pro" start -- --cwd (?:".+"|'.+') --resume /,
       ),
       harvestCommand: expect.stringMatching(
-        /^npm exec --yes pnpm@10\.33\.2 -- --dir "C:\/Code\/ask-pro" start -- --cwd ".+" --harvest /,
+        /^npm exec --yes pnpm@10\.33\.2 -- --dir "C:\/Code\/ask-pro" start -- --cwd (?:".+"|'.+') --harvest /,
       ),
     });
   }, 30000);

@@ -4,6 +4,11 @@
 
 ### Changed
 
+- Treat exact `--files` paths as deliberate attachments while keeping
+  directories and globs under the default discovery exclusions, and describe
+  attachments as context whose authority comes from the consultation prompt.
+- Cap each context file, aggregate selected content, and final uncompressed
+  `CONTEXT.zip` at the shared 20 MiB browser-upload ceiling before Chrome starts.
 - Select `GPT-5.6 Sol`, then `Pro` intelligence in ChatGPT, and remove the
   obsolete `--extended` CLI/session surface now that Pro is a single tier.
 - Remove the unused example config file, collapse the ask-pro session status
@@ -112,6 +117,14 @@
 
 ### Fixed
 
+- Include an exact allowed prior-session `ANSWER.md` in `MANIFEST.json`,
+  `MANIFEST.md`, and `CONTEXT.zip` even though `.ask-pro/**` remains excluded
+  from directory/glob discovery; preserve explicit reasons during canonical
+  deduplication.
+- Fail missing, unreadable, non-text, oversized, outside-project,
+  symlink-escaping, and hard-forbidden exact requests before browser startup,
+  including credential targets hidden behind symlinks, without creating a
+  usable partial consultation.
 - CLI: reject `--files` glob roots that resolve outside the project cwd before
   matching files, including parent-relative Windows backslash variants and
   post-wildcard parent traversal.
