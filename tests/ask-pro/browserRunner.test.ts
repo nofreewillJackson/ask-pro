@@ -914,8 +914,9 @@ describe("ask-pro browser runner", () => {
     const firstCall = runBrowserModeMock.mock.calls[0] as unknown[] | undefined;
     expect(firstCall?.[0]).toMatchObject({
       config: {
-        attachRunning: true,
+        attachRunning: false,
         manualLoginProfileDir: testSharedProfileDir(),
+        remoteChrome: { host: "127.0.0.1", port: 9229 },
         url: "https://chatgpt.com/",
       },
     });
@@ -961,8 +962,53 @@ describe("ask-pro browser runner", () => {
     const firstCall = runBrowserModeMock.mock.calls[0] as unknown[] | undefined;
     expect(firstCall?.[0]).toMatchObject({
       config: {
-        attachRunning: true,
+        attachRunning: false,
         manualLoginProfileDir: testSharedProfileDir(),
+        remoteChrome: { host: "127.0.0.1", port: 9229 },
+        url: "https://chatgpt.com/",
+      },
+    });
+  });
+
+  test("pre-submission attach lookup failure without runtime restarts the managed submission", async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), "ask-pro-pre-submit-no-runtime-"));
+    tempDirs.push(cwd);
+    const session = await createAskProSession({
+      cwd,
+      question: "Resume after attach lookup lost its runtime.",
+      filePatterns: [],
+      dryRun: false,
+    });
+    await writeAskProBrowserMetadata({
+      cwd,
+      sessionId: session.id,
+      metadata: {
+        schemaVersion: 1,
+        status: "failed",
+        profileDir: testSharedProfileDir(),
+        url: "https://chatgpt.com/",
+        reason:
+          "No running browser with attach metadata matched 127.0.0.1:9222. Enable remote debugging first.",
+      },
+    });
+    await updateAskProStatus({
+      cwd,
+      sessionId: session.id,
+      status: "FAILED",
+      reason:
+        "No running browser with attach metadata matched 127.0.0.1:9222. Enable remote debugging first.",
+    });
+
+    await resumeAskProBrowserSession({ cwd, sessionId: session.id, temporary: false });
+
+    expect(resumeBrowserSessionMock).not.toHaveBeenCalled();
+    expect(runBrowserModeMock).toHaveBeenCalledTimes(1);
+    const firstCall = runBrowserModeMock.mock.calls[0] as unknown[] | undefined;
+    expect(firstCall?.[0]).toMatchObject({
+      config: {
+        attachRunning: false,
+        manualLoginProfileDir: testSharedProfileDir(),
+        remoteChrome: null,
         url: "https://chatgpt.com/",
       },
     });

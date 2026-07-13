@@ -9,6 +9,9 @@
   recover a nonexistent conversation or launch a competing Chrome process.
 - Ignore ChatGPT's dormant Cloudflare challenge script when the normal composer
   is visible and no visible challenge evidence is present.
+- Reconnect pre-submission recovery to the saved managed-Chrome endpoint at its
+  actual host and port, and restart safely when a failed attach lost that
+  runtime metadata.
 - Treat exact `--files` paths as deliberate attachments while keeping
   directories and globs under the default discovery exclusions, and describe
   attachments as context whose authority comes from the consultation prompt.

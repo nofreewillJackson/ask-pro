@@ -11,7 +11,7 @@ import {
 import { runBrowserMode, type BrowserRunResult } from "../browserMode.js";
 import { closeTab } from "../browser/chromeLifecycle.js";
 import { resumeBrowserSession } from "../browser/reattach.js";
-import type { BrowserLogger } from "../browser/types.js";
+import type { BrowserLogger, BrowserRuntimeMetadata } from "../browser/types.js";
 import { formatContextLimit, MAX_CONTEXT_BYTES } from "./limits.js";
 import {
   appendAskProLog,
@@ -39,7 +39,7 @@ export interface RunAskProBrowserSessionOptions {
   chatgptUrl?: string;
   browserProfileDir?: string;
   agentId?: string | null;
-  attachRunning?: boolean;
+  runningBrowserRuntime?: BrowserRuntimeMetadata;
   allowStartMinimized?: boolean;
   verbose?: boolean;
 }
@@ -51,7 +51,7 @@ export async function runAskProBrowserSession({
   chatgptUrl: chatgptUrlOverride,
   browserProfileDir,
   agentId: agentIdOverride,
-  attachRunning = false,
+  runningBrowserRuntime,
   allowStartMinimized = true,
   verbose,
 }: RunAskProBrowserSessionOptions): Promise<BrowserRunResult> {
@@ -92,6 +92,7 @@ export async function runAskProBrowserSession({
       url: chatgptUrl,
       acceptLanguage: ASK_PRO_ACCEPT_LANGUAGE,
       chromeMode: "launching",
+      runtime: runningBrowserRuntime,
     },
   });
   await updateAskProStatus({ cwd, sessionId, status: "BROWSER_STARTING" });
@@ -110,7 +111,18 @@ export async function runAskProBrowserSession({
       config: {
         url: chatgptUrl,
         manualLogin: true,
-        attachRunning,
+        attachRunning: false,
+        remoteChrome: runningBrowserRuntime?.chromePort
+          ? {
+              host: runningBrowserRuntime.chromeHost ?? "127.0.0.1",
+              port: runningBrowserRuntime.chromePort,
+            }
+          : null,
+        remoteChromeBrowserWSEndpoint: runningBrowserRuntime?.chromeBrowserWSEndpoint ?? null,
+        remoteChromeProfileRoot:
+          runningBrowserRuntime?.chromeProfileRoot ??
+          runningBrowserRuntime?.userDataDir ??
+          (runningBrowserRuntime ? browserProfile : null),
         manualLoginProfileDir: browserProfile,
         manualLoginWaitMs: MANUAL_LOGIN_WAIT_MS,
         timeoutMs: DEFAULT_TIMEOUT_MS,
@@ -339,7 +351,11 @@ export async function resumeAskProBrowserSession({
     return;
   }
   if (!metadata.runtime) {
-    if (metadata.status !== "needs_user_auth") {
+    const canRestartPreSubmission =
+      metadata.status === "needs_user_auth" ||
+      (metadata.status === "failed" &&
+        isPreSubmissionBrowserConnectionFailure(sessionStatus.reason));
+    if (!canRestartPreSubmission) {
       throw new Error(`session ${sessionId} has no saved browser runtime metadata`);
     }
     await appendAskProLog(
@@ -367,7 +383,8 @@ export async function resumeAskProBrowserSession({
   const shouldResubmitBeforeConversation =
     !hasConversationReference(metadata.runtime) &&
     (metadata.status === "needs_user_auth" ||
-      (metadata.status === "failed" && isLocalChromeConnectionRefusal(sessionStatus.reason)));
+      (metadata.status === "failed" &&
+        isPreSubmissionBrowserConnectionFailure(sessionStatus.reason)));
   if (shouldResubmitBeforeConversation) {
     await appendAskProLog(
       cwd,
@@ -381,7 +398,7 @@ export async function resumeAskProBrowserSession({
       chatgptUrl,
       browserProfileDir: fallbackProfile,
       agentId: metadata.agentId ?? null,
-      attachRunning: true,
+      runningBrowserRuntime: metadata.runtime,
       allowStartMinimized: false,
       verbose,
     });
@@ -548,8 +565,10 @@ function hasConversationReference(runtime: NonNullable<AskProBrowserMetadata["ru
   return Boolean(runtime.conversationId || /\/c\/[^/?#]+/.test(runtime.tabUrl ?? ""));
 }
 
-function isLocalChromeConnectionRefusal(reason: string | undefined): boolean {
-  return /(?:econnrefused|connection refused)/i.test(reason ?? "");
+function isPreSubmissionBrowserConnectionFailure(reason: string | undefined): boolean {
+  return /(?:econnrefused|connection refused|no running browser with attach metadata matched)/i.test(
+    reason ?? "",
+  );
 }
 
 function withNoTemporaryResumeCommand(command: string): string {
