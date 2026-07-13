@@ -39,6 +39,7 @@ export interface RunAskProBrowserSessionOptions {
   chatgptUrl?: string;
   browserProfileDir?: string;
   agentId?: string | null;
+  attachRunning?: boolean;
   allowStartMinimized?: boolean;
   verbose?: boolean;
 }
@@ -50,6 +51,7 @@ export async function runAskProBrowserSession({
   chatgptUrl: chatgptUrlOverride,
   browserProfileDir,
   agentId: agentIdOverride,
+  attachRunning = false,
   allowStartMinimized = true,
   verbose,
 }: RunAskProBrowserSessionOptions): Promise<BrowserRunResult> {
@@ -108,7 +110,7 @@ export async function runAskProBrowserSession({
       config: {
         url: chatgptUrl,
         manualLogin: true,
-        attachRunning: false,
+        attachRunning,
         manualLoginProfileDir: browserProfile,
         manualLoginWaitMs: MANUAL_LOGIN_WAIT_MS,
         timeoutMs: DEFAULT_TIMEOUT_MS,
@@ -362,6 +364,30 @@ export async function resumeAskProBrowserSession({
     return;
   }
 
+  const shouldResubmitBeforeConversation =
+    !hasConversationReference(metadata.runtime) &&
+    (metadata.status === "needs_user_auth" ||
+      (metadata.status === "failed" && isLocalChromeConnectionRefusal(sessionStatus.reason)));
+  if (shouldResubmitBeforeConversation) {
+    await appendAskProLog(
+      cwd,
+      sessionId,
+      "Prompt was not submitted; retrying through the running managed Chrome.",
+    );
+    await runAskProBrowserSession({
+      cwd,
+      sessionId,
+      temporary: effectiveTemporary,
+      chatgptUrl,
+      browserProfileDir: fallbackProfile,
+      agentId: metadata.agentId ?? null,
+      attachRunning: true,
+      allowStartMinimized: false,
+      verbose,
+    });
+    return;
+  }
+
   await updateAskProStatus({ cwd, sessionId, status: "WAITING" });
   await writeAskProBrowserMetadata({
     cwd,
@@ -516,6 +542,14 @@ function isTemporaryAskProUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+function hasConversationReference(runtime: NonNullable<AskProBrowserMetadata["runtime"]>): boolean {
+  return Boolean(runtime.conversationId || /\/c\/[^/?#]+/.test(runtime.tabUrl ?? ""));
+}
+
+function isLocalChromeConnectionRefusal(reason: string | undefined): boolean {
+  return /(?:econnrefused|connection refused)/i.test(reason ?? "");
 }
 
 function withNoTemporaryResumeCommand(command: string): string {
@@ -893,6 +927,7 @@ interface AskProBrowserMetadata {
   temporary?: boolean;
   url?: string;
   acceptLanguage?: string;
+  reason?: string;
   chromeMode?: "launching" | "launched" | "reattaching" | "reused_devtools" | "relaunched";
   runtime?: {
     chromePid?: number;

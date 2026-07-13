@@ -4,6 +4,9 @@
 
 ### Changed
 
+- Resume a challenge-gated consultation that has not submitted its prompt yet
+  through the already-running managed Chrome profile instead of attempting to
+  recover a nonexistent conversation or launch a competing Chrome process.
 - Treat exact `--files` paths as deliberate attachments while keeping
   directories and globs under the default discovery exclusions, and describe
   attachments as context whose authority comes from the consultation prompt.

@@ -1,6 +1,6 @@
 {
   "name": "ask_pro",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Browser-backed ChatGPT Pro escalation for hard engineering questions.",
   "keywords": [
     "agents",

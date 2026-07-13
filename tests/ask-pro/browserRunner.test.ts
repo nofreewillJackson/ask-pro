@@ -880,6 +880,94 @@ describe("ask-pro browser runner", () => {
     });
   });
 
+  test("auth resume resubmits through the running managed Chrome before a conversation exists", async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), "ask-pro-auth-pre-submit-resume-"));
+    tempDirs.push(cwd);
+    const session = await createAskProSession({
+      cwd,
+      question: "Resume after a pre-submission challenge.",
+      filePatterns: [],
+      dryRun: false,
+    });
+    await writeAskProBrowserMetadata({
+      cwd,
+      sessionId: session.id,
+      metadata: {
+        schemaVersion: 1,
+        status: "needs_user_auth",
+        profileDir: testSharedProfileDir(),
+        url: "https://chatgpt.com/",
+        runtime: {
+          chromePid: 1234,
+          chromePort: 9229,
+          chromeHost: "127.0.0.1",
+          userDataDir: testSharedProfileDir(),
+        },
+      },
+    });
+    await updateAskProStatus({ cwd, sessionId: session.id, status: "NEEDS_USER_AUTH" });
+
+    await resumeAskProBrowserSession({ cwd, sessionId: session.id, temporary: false });
+
+    expect(resumeBrowserSessionMock).not.toHaveBeenCalled();
+    expect(runBrowserModeMock).toHaveBeenCalledTimes(1);
+    const firstCall = runBrowserModeMock.mock.calls[0] as unknown[] | undefined;
+    expect(firstCall?.[0]).toMatchObject({
+      config: {
+        attachRunning: true,
+        manualLoginProfileDir: testSharedProfileDir(),
+        url: "https://chatgpt.com/",
+      },
+    });
+  });
+
+  test("pre-submission local connection failure retries through the running managed Chrome", async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), "ask-pro-pre-submit-refused-resume-"));
+    tempDirs.push(cwd);
+    const session = await createAskProSession({
+      cwd,
+      question: "Resume after a refused replacement Chrome port.",
+      filePatterns: [],
+      dryRun: false,
+    });
+    await writeAskProBrowserMetadata({
+      cwd,
+      sessionId: session.id,
+      metadata: {
+        schemaVersion: 1,
+        status: "failed",
+        profileDir: testSharedProfileDir(),
+        url: "https://chatgpt.com/",
+        reason: "connect ECONNREFUSED 127.0.0.1:44731",
+        runtime: {
+          chromePid: 1234,
+          chromePort: 9229,
+          chromeHost: "127.0.0.1",
+          userDataDir: testSharedProfileDir(),
+        },
+      },
+    });
+    await updateAskProStatus({
+      cwd,
+      sessionId: session.id,
+      status: "FAILED",
+      reason: "connect ECONNREFUSED 127.0.0.1:44731",
+    });
+
+    await resumeAskProBrowserSession({ cwd, sessionId: session.id, temporary: false });
+
+    expect(resumeBrowserSessionMock).not.toHaveBeenCalled();
+    expect(runBrowserModeMock).toHaveBeenCalledTimes(1);
+    const firstCall = runBrowserModeMock.mock.calls[0] as unknown[] | undefined;
+    expect(firstCall?.[0]).toMatchObject({
+      config: {
+        attachRunning: true,
+        manualLoginProfileDir: testSharedProfileDir(),
+        url: "https://chatgpt.com/",
+      },
+    });
+  });
+
   test("auth relaunch preserves default temporary chat fallback semantics", async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), "ask-pro-reattach-temp-fallback-"));
     tempDirs.push(cwd);
