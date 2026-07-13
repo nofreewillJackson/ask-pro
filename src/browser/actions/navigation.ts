@@ -481,10 +481,45 @@ async function isCloudflareInterstitial(Runtime: ChromeClient["Runtime"]): Promi
   }
 
   const { result } = await Runtime.evaluate({
-    expression: `Boolean(document.querySelector('${CLOUDFLARE_SCRIPT_SELECTOR}'))`,
+    expression: `(() => {
+      const isVisible = (node) => {
+        if (!(node instanceof HTMLElement)) return false;
+        const rect = node.getBoundingClientRect();
+        const style = getComputedStyle(node);
+        return (
+          rect.width > 0 &&
+          rect.height > 0 &&
+          style.display !== 'none' &&
+          style.visibility !== 'hidden'
+        );
+      };
+      const composer = ${JSON.stringify(INPUT_SELECTORS)}.some((selector) => {
+        const node = document.querySelector(selector);
+        return node && !node.hasAttribute('disabled') && isVisible(node);
+      });
+      const visibleChallenge = [
+        '#challenge-running',
+        '#challenge-stage',
+        '[data-testid="cf-turnstile"]',
+        'iframe[src*="challenges.cloudflare.com"]',
+      ].some((selector) => {
+        const node = document.querySelector(selector);
+        return node && isVisible(node);
+      });
+      const text = String(document.body?.innerText || '').toLowerCase();
+      const challengeText =
+        /verify you are human|checking your browser|performing security verification/.test(text);
+      return {
+        challengeScript: Boolean(document.querySelector('${CLOUDFLARE_SCRIPT_SELECTOR}')),
+        visibleChallenge,
+        challengeText,
+        composer,
+      };
+    })()`,
     returnByValue: true,
   });
-  return Boolean(result.value);
+  const probe = result.value as { visibleChallenge?: boolean; challengeText?: boolean } | undefined;
+  return Boolean(probe?.visibleChallenge || probe?.challengeText);
 }
 
 type LoginProbeResult = {

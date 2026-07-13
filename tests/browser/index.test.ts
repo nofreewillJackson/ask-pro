@@ -5,7 +5,7 @@ import {
   runSubmissionWithRecoveryForTest,
   shouldPreserveBrowserOnErrorForTest,
 } from "../../src/browser/index.js";
-import { ensureLoggedIn } from "../../src/browser/pageActions.js";
+import { ensureLoggedIn, ensureNotBlocked } from "../../src/browser/pageActions.js";
 import { BrowserAutomationError } from "../../src/browser/errors.js";
 
 describe("shouldPreserveBrowserOnErrorForTest", () => {
@@ -35,6 +35,52 @@ describe("shouldPreserveBrowserOnErrorForTest", () => {
       stage: "execute-browser",
     });
     expect(shouldPreserveBrowserOnErrorForTest(error, false)).toBe(false);
+  });
+});
+
+describe("ensureNotBlocked", () => {
+  test("allows a normal composer page with a dormant Cloudflare script", async () => {
+    const logger: (message: string) => void = vi.fn();
+    const Runtime = {
+      evaluate: vi
+        .fn()
+        .mockResolvedValueOnce({ result: { value: "ChatGPT" } })
+        .mockResolvedValueOnce({
+          result: {
+            value: {
+              challengeScript: true,
+              visibleChallenge: false,
+              challengeText: false,
+              composer: true,
+            },
+          },
+        }),
+    };
+
+    await expect(ensureNotBlocked(Runtime as never, false, logger)).resolves.toBeUndefined();
+  });
+
+  test("rejects visible Cloudflare challenge evidence", async () => {
+    const logger: (message: string) => void = vi.fn();
+    const Runtime = {
+      evaluate: vi
+        .fn()
+        .mockResolvedValueOnce({ result: { value: "ChatGPT" } })
+        .mockResolvedValueOnce({
+          result: {
+            value: {
+              challengeScript: true,
+              visibleChallenge: true,
+              challengeText: true,
+              composer: false,
+            },
+          },
+        }),
+    };
+
+    await expect(ensureNotBlocked(Runtime as never, false, logger)).rejects.toMatchObject({
+      details: { stage: "cloudflare-challenge" },
+    });
   });
 });
 
