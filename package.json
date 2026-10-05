@@ -79,25 +79,25 @@
     "prepare": "pnpm run build"
   },
   "dependencies": {
-    "@steipete/sweet-cookie": "^0.2.0",
-    "chrome-launcher": "^1.2.1",
+    "@steipete/sweet-cookie": "^0.4.4",
+    "chrome-launcher": "^1.2.2",
     "chrome-remote-interface": "^0.34.0",
-    "commander": "^14.0.3",
-    "dotenv": "^17.4.2",
+    "commander": "^15.0.0",
+    "dotenv": "^18.0.5",
     "fast-glob": "^3.3.3"
   },
   "devDependencies": {
-    "@types/chrome-remote-interface": "^0.33.0",
-    "@types/node": "^25.6.0",
-    "@typescript/native-preview": "7.0.0-dev.20260427.1",
-    "@vitest/coverage-v8": "4.1.5",
-    "devtools-protocol": "0.0.1619965",
-    "esbuild": "^0.28.0",
-    "oxfmt": "0.47.0",
-    "oxlint": "^1.62.0",
-    "tsx": "^4.22.4",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.5"
+    "@types/chrome-remote-interface": "^0.34.0",
+    "@types/node": "^26.6.4",
+    "@typescript/native-preview": "7.0.0-dev.20260707.2",
+    "@vitest/coverage-v8": "5.0.3",
+    "devtools-protocol": "0.0.1709723",
+    "esbuild": "^0.28.2",
+    "oxfmt": "0.71.0",
+    "oxlint": "^1.86.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
   },
   "devEngines": {
     "runtime": [
@@ -113,7 +113,7 @@
   "packageManager": "pnpm@10.33.2",
   "pnpm": {
     "overrides": {
-      "devtools-protocol": "0.0.1619965"
+      "devtools-protocol": "0.0.1709723"
     },
     "onlyBuiltDependencies": [
       "esbuild"
